@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مەهزەلەی کۆلێژ | FPP Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rudaw&display=swap" rel="stylesheet">
+    <style>
+        /* --- دیزاین (CSS) --- */
+        :root {
+            --bg-color: #1a1a1a;
+            --table-color: #2e7d32;
+            --card-w: 110px;
+            --card-h: 150px;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Rudaw', 'Arial', sans-serif;
+            background: var(--bg-color);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* شاشەی سەرەکی */
+        #start-screen {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(0,0,0,0.9);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            background: #ff9800;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #000;
+            transition: 0.2s;
+        }
+        button:hover { transform: scale(1.1); background: #ffb74d; }
+
+        /* --- ژینگەی یاری (3D) --- */
+        .scene {
+            perspective: 1200px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: -50px;
+        }
+
+        .table {
+            width: 700px;
+            height: 500px;
+            background: radial-gradient(circle, #388e3c, #1b5e20);
+            transform: rotateX(45deg) scale(0.9);
+            border-radius: 40px;
+            box-shadow: 0 50px 80px rgba(0,0,0,0.8), inset 0 0 50px rgba(0,0,0,0.5);
+            position: relative;
+            border: 15px solid #3e2723;
+        }
+
+        /* --- یاریزانەکان (Bots) --- */
+        .opponent {
+            position: absolute;
+            text-align: center;
+            transform: rotateX(-45deg); /* ڕاستکردنەوەی وێنەکان */
+            transition: 0.3s;
+        }
+        
+        .avatar {
+            width: 70px;
+            height: 70px;
+            background: #444;
+            border-radius: 50%;
+            margin: 0 auto;
+            border: 3px solid white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        .name { 
+            background: rgba(0,0,0,0.7); 
+            padding: 5px 10px; 
+            border-radius: 10px; 
+            margin-top: 5px; 
+            display: inline-block;
+        }
+
+        /* شوێنی ڕۆبۆتەکان */
+        .opponent-top { top: -90px; left: 50%; transform: translate(-50%, 0) rotateX(-45deg); }
+        .opponent-left { left: -90px; top: 50%; transform: translate(0, -50%) rotateX(-45deg); }
+        .opponent-right { right: -90px; top: 50%; transform: translate(0, -50%) rotateX(-45deg); }
+
+        /* کاتێک نۆرەی ڕۆبۆتێکە */
+        .active-turn .avatar { border-color: #ff9800; box-shadow: 0 0 30px #ff9800; }
+
+        /* --- ناوچەی ناوەڕاست --- */
+        .deck-area {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px; height: 190px;
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .played-card {
+            width: var(--card-w);
+            height: var(--card-h);
+            background: white;
+            border-radius: 10px;
+            position: absolute;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            padding: 10px;
+            border: 3px solid #ccc;
+            font-size: 1.1rem;
+            animation: dropCard 0.5s ease-out;
+        }
+
+        @keyframes dropCard {
+            0% { transform: scale(2) translateY(-200px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* --- دەستی خۆت (My Hand - FPP) --- */
+        .my-hand-container {
+            position: absolute;
+            bottom: -30px;
+            width: 100%;
+            height: 220px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 10;
+            pointer-events: none; /* تا کارتەکان دەستی لێ بدرێت */
+        }
+
+        .hand {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 20px;
+            pointer-events: auto;
+        }
+
+        .card {
+            width: var(--card-w);
+            height: var(--card-h);
+            background: white;
+            border-radius: 12px;
+            margin: 0 -30px;
+            box-shadow: -5px 5px 15px rgba(0,0,0,0.6);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            padding: 5px;
+            border: 4px solid #ccc;
+            user-select: none;
+            transform-origin: bottom center;
+        }
+
+        .card:hover {
+            transform: translateY(-80px) scale(1.2) rotate(0deg) !important;
+            z-index: 100;
+            margin: 0 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        }
+
+        /* جۆری کارتەکان */
+        .card-farhad { border-color: #d32f2f; background: #ffebee; }
+        .card-ramadan { border-color: #388e3c; background: #e8f5e9; }
+        .card-shame { border-color: #7b1fa2; background: #f3e5f5; }
+        
+        .card-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .card-text { font-size: 1rem; line-height: 1.2; }
+
+        /* پەیامی سیستەم */
+        #game-status {
+            position: absolute;
+            top: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1 style="font-size: 4rem; margin-bottom: 10px; color: #ff9800; text-shadow: 0 0 20px red;">🎓 مەهزەلەی کۆلێژ</h1>
+        <p style="font-size: 1.5rem; margin-bottom: 30px;">وەشانی ڕەمەزان - FPP</p>
+        <button onclick="startGame()">دەستپێکردن</button>
+    </div>
+
+    <div id="game-status">چاوەڕێی دەستپێکردن...</div>
+
+    <div class="scene">
+        <div class="table">
+            
+            <div class="opponent opponent-top" id="bot-2">
+                <div class="avatar">👴</div>
+                <div class="name">مامۆستا شێرکۆ</div>
+            </div>
+            <div class="opponent opponent-left" id="bot-1">
+                <div class="avatar">👱</div>
+                <div class="name">تالیب (نوێنەر)</div>
+            </div>
+            <div class="opponent opponent-right" id="bot-3">
+                <div class="avatar">👩</div>
+                <div class="name">ئاڵا (زیرەک)</div>
+            </div>
+
+            <div class="deck-area" id="deck-area">
+                </div>
+
+        </div>
+    </div>
+
+    <div class="my-hand-container">
+        <div class="hand" id="my-hand">
+            </div>
+    </div>
+
+    <script>
+        // --- کۆدی یاری (JavaScript) ---
+        
+        // جۆری کارتەکان
+        const cardTypes = [
+            { text: "د. فەرهاد پیرباڵ", icon: "🦁", type: "card-farhad" },
+            { text: "نوێنەری قاعە", icon: "📢", type: "card-shame" },
+            { text: "بەربانگی ئێوارە", icon: "🍲", type: "card-ramadan" },
+            { text: "کویزی کتوپڕ", icon: "📝", type: "card-shame" },
+            { text: "غەیبەتی مامۆستا", icon: "🤫", type: "card-farhad" },
+            { text: "ئینزیبات", icon: "👮", type: "card-shame" },
+            { text: "خەوتن لە کۆتا ڕیز", icon: "😴", type: "card-ramadan" },
+            { text: "نەمانی شەحن", icon: "🔋", type: "card-shame" },
+            { text: "چای کافتریا", icon: "☕", type: "card-ramadan" },
+            { text: "مەعاش هات", icon: "💰", type: "card-ramadan" },
+            { text: "خارە وازم لێ بێنە", icon: "✋", type: "card-farhad" }
+        ];
+
+        let myHand = [];
+        let isMyTurn = true;
+
+        // ١. دەستپێکردن
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-status').innerText = "نۆرەی تۆیە! کارتێک دابنێ...";
+            dealCards();
+        }
+
+        // ٢. دابەشکردنی کارت
+        function dealCards() {
+            const handContainer = document.getElementById('my-hand');
+            handContainer.innerHTML = '';
+            myHand = [];
+
+            // ٥ کارت بە ڕەمەکی
+            for(let i=0; i<5; i++) {
+                const randomCard = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+                myHand.push(randomCard);
+                
+                // دروستکردنی HTML
+                const cardEl = document.createElement('div');
+                cardEl.className = `card ${randomCard.type}`;
+                cardEl.innerHTML = `<div class="card-icon">${randomCard.icon}</div><div class="card-text">${randomCard.text}</div>`;
+                
+                // جووڵەی کارتەکان (Rotation) بۆ جوانی
+                const rotate = (i - 2) * 5; 
+                cardEl.style.transform = `rotate(${rotate}deg) translateY(${Math.abs(rotate)*2}px)`;
+                
+                // کلیککردن
+                cardEl.onclick = () => playCard(cardEl, randomCard);
+                
+                handContainer.appendChild(cardEl);
+            }
+        }
+
+        // ٣. یاریکردن بە کارت
+        function playCard(element, cardData) {
+            if(!isMyTurn) return; // ئەگەر نۆرەی تۆ نەبوو
+            
+            isMyTurn = false;
+            
+            // ئەنیمەیشنی فڕێدان
+            element.style.transition = "all 0.5s ease";
+            element.style.transform = "translateY(-400px) scale(0.5) rotate(10deg)";
+            element.style.opacity = "0";
+
+            // دانان لەسەر مێز
+            setTimeout(() => {
+                element.remove();
+                showPlayedCard(cardData.text, cardData.type, "تۆ");
+                
+                // دەستپێکردنی نۆرەی ڕۆبۆتەکان
+                document.getElementById('game-status').innerText = "نۆرەی مامۆستا و تالیبە...";
+                playBotsTurn();
+            }, 400);
+        }
+
+        // ٤. نیشاندانی کارتی سەر مێز
+        function showPlayedCard(text, type, playerName) {
+            const deckArea = document.getElementById('deck-area');
+            deckArea.innerHTML = '';
+
+            const card = document.createElement('div');
+            card.className = `played-card ${type}`;
+            card.innerHTML = `<div>${text}</div><small style='color:#555; margin-top:5px'>${playerName}</small>`;
+            
+            deckArea.appendChild(card);
+        }
+
+        // ٥. نۆرەی ڕۆبۆتەکان (AI Logic)
+        function playBotsTurn() {
+            const bots = ['bot-1', 'bot-2', 'bot-3'];
+            let delay = 1500;
+
+            bots.forEach((botId, index) => {
+                setTimeout(() => {
+                    // دیاریکردنی کێ یاری دەکات
+                    document.querySelectorAll('.opponent').forEach(el => el.classList.remove('active-turn'));
+                    document.getElementById(botId).classList.add('active-turn');
+
+                    // کارتێکی ڕەمەکی
+                    const randomCard = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+                    const botName = document.querySelector(`#${botId} .name`).innerText;
+                    
+                    showPlayedCard(randomCard.text, randomCard.type, botName);
+
+                    // ئەگەر نۆرەی کۆتایی بوو
+                    if(index === bots.length - 1) {
+                        setTimeout(() => {
+                            document.querySelectorAll('.opponent').forEach(el => el.classList.remove('active-turn'));
+                            isMyTurn = true;
+                            document.getElementById('game-status').innerText = "نۆرەی تۆیە! کارتێک دابنێ...";
+                            
+                            // ئەگەر کارتت نەما، دابەشی بکەرەوە
+                            if(document.getElementById('my-hand').children.length === 0) {
+                                alert("دەستێکی نوێ دابەش دەکرێت...");
+                                dealCards();
+                            }
+
+                        }, 1500);
+                    }
+                }, delay * (index + 1));
+            });
+        }
+
+    </script>
+</body>
+</html>
